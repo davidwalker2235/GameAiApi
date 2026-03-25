@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Game AI API Tester</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 24px; max-width: 860px; }
+        h1 { margin-bottom: 8px; }
+        section { border: 1px solid #ddd; padding: 16px; border-radius: 8px; margin-bottom: 16px; }
+        textarea { width: 100%; min-height: 120px; }
+        pre { background: #111; color: #d6ffe3; padding: 12px; border-radius: 6px; overflow: auto; }
+        button { padding: 8px 14px; }
+        .row { margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>Game AI API Tester</h1>
+    <p>Sube contexto Markdown y prueba el chat contra Azure Foundry.</p>
+
+    <section>
+        <h2>1) Subir contexto (.md)</h2>
+        <div class="row">
+            <input id="contextFile" type="file" accept=".md" />
+            <button id="uploadBtn">Subir contexto</button>
+        </div>
+        <div id="contextStatus">Estado: sin comprobar</div>
+    </section>
+
+    <section>
+        <h2>2) Chat</h2>
+        <div class="row">
+            <label for="sessionId">SessionId</label>
+            <input id="sessionId" type="text" value="dev-session" style="width: 220px; margin-left: 8px;" />
+        </div>
+        <div class="row">
+            <textarea id="prompt" placeholder="Escribe el prompt para la IA"></textarea>
+        </div>
+        <button id="chatBtn">Enviar</button>
+    </section>
+
+    <section>
+        <h2>Respuesta</h2>
+        <pre id="output">Sin respuesta todavía.</pre>
+    </section>
+
+    <script>
+        // @ts-nocheck
+        const contextStatus = document.getElementById('contextStatus');
+        const output = document.getElementById('output');
+
+        async function refreshStatus() {
+            const res = await fetch('/api/ai/context/status');
+            const data = await res.json();
+            contextStatus.textContent = `Estado: ${data.hasContext ? 'contexto cargado' : 'sin contexto'} | versión: ${data.version ?? '-'}`;
+        }
+
+        document.getElementById('uploadBtn').addEventListener('click', async () => {
+            const fileInput = document.getElementById('contextFile');
+            const file = fileInput.files[0];
+            if (!file) {
+                alert('Selecciona un .md');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const res = await fetch('/api/ai/context', {
+                method: 'POST',
+                body: formData
+            });
+
+            const text = await res.text();
+            output.textContent = text;
+            await refreshStatus();
+        });
+
+        document.getElementById('chatBtn').addEventListener('click', async () => {
+            const sessionId = document.getElementById('sessionId').value;
+            const prompt = document.getElementById('prompt').value;
+
+            const res = await fetch('/api/ai/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sessionId, prompt })
+            });
+
+            const text = await res.text();
+            output.textContent = text;
+        });
+
+        refreshStatus();
+    </script>
+</body>
+</html>
