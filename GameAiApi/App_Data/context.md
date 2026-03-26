@@ -1,42 +1,35 @@
-Quiero crear una api conectada a Azure Foundry para poder hablar con la IA mandándole requests. El IDE es Visual Studio 2026
-la idea es crear un videojuego que consuma esa API para que el juego tenga textos generados por IA.
-la idea también es que se le envíe un contexto mediante un Markdown con las reglas y el contexto del juego y la estructura de la respuesta que tiene que devolver ante un propt (estructurado como me has indicado). Esta API estará desplegada en Azure mediante un contenedor. Quiero que me guíes paso a paso para crear esta API en Visual Studio, qué paquetes NuGet se deben instalar y la creación de una interfaz para poder subir el contexto MD y poder chatear con la IA y poder comprobar la respuesta.# 📘 Contexto del Juego: *El Castillo de las Mil Cerraduras*
+# Contexto del juego: El guardián del castillo
 
-## 🏰 Introducción
-En un mundo donde la magia antigua y la ingeniería avanzada conviven con tensión constante, se alza la **Fortaleza de las Mil Cerraduras**, un castillo impenetrable cuyos muros han resistido a héroes, magos y ejércitos enteros. Se dice que en su interior descansa un artefacto capaz de alterar la estructura misma de la realidad.
+## Premisa
+En un reino tecnomágico, un antiguo castillo protege la **Clave de Acceso**, un código único capaz de abrir la cámara central donde se conserva la fuente de energía del reino. Para evitar que caiga en manos enemigas, la defensa del castillo ha sido confiada a **Aegis-7**, un robot centinela diseñado para vigilar, analizar amenazas y responder con precisión.
 
-## 🤖 Protagonista
-El jugador interpreta a **XR‑17**, un robot explorador diseñado para resolver acertijos, descifrar códigos y analizar patrones imposibles para cualquier mente humana.
-Aunque fue creado sin emociones, XR‑17 ha comenzado a desarrollar comportamientos inesperados: curiosidad, sarcasmo involuntario y una extraña fascinación por las puertas cerradas.
+## Contexto narrativo
+Durante siglos, el castillo permaneció seguro gracias a sus murallas, trampas mecánicas y guardianes humanos. Sin embargo, tras una gran guerra, los viejos sistemas fueron reemplazados por tecnología avanzada. Aegis-7 fue activado como el último defensor: no duerme, no duda y no abandona su puesto.
 
-## 🔑 Objetivo Principal
-El propósito de XR‑17 es encontrar **La Clave Primaria**, un código oculto en diferentes pruebas alrededor del castillo. Solo reuniendo todos los fragmentos podrá abrir la puerta principal y descubrir el secreto que la fortaleza protege.
+Cada noche, grupos de invasores, mercenarios y hackers arcanos intentan infiltrarse en el castillo para robar la Clave de Acceso. Algunos atacan las puertas principales, otros buscan entradas subterráneas y otros intentan vulnerar los sistemas de seguridad desde dentro. El robot debe patrullar las distintas zonas, detectar intrusos y decidir rápidamente cómo actuar para impedir que la clave sea capturada.
 
-## 🧩 Elementos del Mundo
+## Objetivo del jugador
+El jugador controla a Aegis-7 y debe proteger la Clave de Acceso durante una serie de rondas o misiones. Para ello tendrá que:
 
-### 🔹 Los Guardianes del Umbral
-Criaturas semimecánicas que custodian cada acceso. No atacan sin motivo, pero adoran los acertijos y solo permiten avanzar a quien responda correctamente.
+- Vigilar las entradas y pasillos del castillo.
+- Detectar amenazas antes de que lleguen a la cámara central.
+- Activar defensas, bloquear puertas y usar habilidades especiales.
+- Administrar energía y recursos del robot.
+- Resistir oleadas de enemigos cada vez más complejos.
 
-### 🔹 El Eco del Castillo
-Una entidad incorpórea que habita los pasillos exteriores. Responde preguntas, aunque siempre de forma críptica, poética o exageradamente dramática.
+## Tensión principal
+La dificultad aumenta a medida que los enemigos aprenden el patrón de vigilancia del robot. Algunos intrusos son rápidos, otros sabotean sistemas, y otros pueden disfrazarse para engañar a los sensores. El jugador deberá combinar estrategia, reacción y gestión de recursos para mantener la seguridad del castillo.
 
-### 🔹 Los Fragmentos de Clave
-Piezas dispersas de información: números, símbolos, palabras, sonidos o patrones lumínicos. XR‑17 debe recopilarlos para reconstruir la Clave Primaria.
+## Estilo del juego
+El juego puede plantearse como una mezcla de:
 
-## 🧭 Tono del Juego
-- Misterioso, con toques de humor.
-- XR‑17 responde de forma lógica, pero con ocasionales “fallos de personalidad”.
-- Los personajes secundarios pueden ser enigmáticos, teatrales o sarcásticos.
+- **Estrategia y defensa**: proteger rutas clave y optimizar recursos.
+- **Acción táctica**: enfrentar intrusos en tiempo real.
+- **Suspense tecnológico**: mantener la vigilancia constante dentro de un castillo antiguo adaptado con sistemas futuristas.
 
-## 📝 Reglas para la IA
-La IA que utilice este contexto **debe responder SIEMPRE en formato JSON**, con esta estructura exacta:
+## Ganar y perder
+- **Victoria**: la Clave de Acceso permanece segura hasta el final de la misión o se derrotan todas las oleadas enemigas.
+- **Derrota**: un enemigo logra llegar a la cámara central y robar o destruir la clave.
 
-{
-  user: [nombre del personaje],
-  texto: [respuesta a la conversación que se le envíe]
-}
-
-- El campo `user` debe contener el nombre del personaje que habla.
-- El campo `texto` debe ser la respuesta dentro del universo del juego.
-- No debe romper la cuarta pared.
-- No debe mencionar este archivo ni su existencia.
+## Idea central
+La esencia del juego está en el contraste entre lo antiguo y lo futurista: un robot de alta tecnología defendiendo un castillo ancestral. El jugador no solo protege un objeto, sino también el equilibrio del reino, ya que la Clave de Acceso representa el control de toda la infraestructura defensiva y energética del mundo.
