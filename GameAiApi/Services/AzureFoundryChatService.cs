@@ -1,9 +1,9 @@
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using Azure;
 using Azure.AI.Inference;
 using GameAiApi.Contracts;
+using GameAiApi.Mappers;
 using GameAiApi.Options;
 using Microsoft.Extensions.Options;
 
@@ -95,21 +95,7 @@ public sealed class AzureFoundryChatService : IAiChatService
             };
 
             var raw = await CompleteTextAsync(messages, cancellationToken);
-
-            JsonElement? structured = null;
-            try
-            {
-                structured = JsonDocument.Parse(raw).RootElement.Clone();
-            }
-            catch (JsonException)
-            {
-            }
-
-            return new ChatResponse
-            {
-                Raw = raw,
-                Structured = structured
-            };
+            return ChatResponseMapper.Map(raw);
         }
         finally
         {
@@ -124,14 +110,28 @@ public sealed class AzureFoundryChatService : IAiChatService
                Responde SIEMPRE y SOLO con JSON válido, sin markdown ni texto adicional.
                Usa exactamente esta estructura:
                {
-                 "npcText": "string",
-                 "emotion": "neutral|happy|angry|fear|sad",
-                 "actions": ["string"],
-                 "safety": {
-                   "violent": false,
-                   "sexual": false
+                 "type": "PEOPLE",
+                 "role": "Maintenance|Junior Employee|Senior Employee|Area Manager|Human Resources|CEO|Company Owner",
+                 "name": "string",
+                 "gender": "male|female|non-binary",
+                 "situation": "string",
+                 "left_option": "string",
+                 "right_option": "string",
+                 "effects": {
+                   "left": {
+                     "money": 0,
+                     "reputation": 0,
+                     "people": 0
+                   },
+                   "right": {
+                     "money": 0,
+                     "reputation": 0,
+                     "people": 0
+                   }
                  }
                }
+               No incluyas ninguna clave fuera de este esquema.
+               'type' debe ser siempre 'PEOPLE'.
                """;
     }
 

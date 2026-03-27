@@ -1,4 +1,5 @@
 using GameAiApi.Contracts;
+using GameAiApi.Domain;
 using GameAiApi.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -58,5 +59,15 @@ public sealed class AiController : ControllerBase
         {
             return BadRequest(ex.Message);
         }
+    }
+
+    [HttpGet("schema/options")]
+    public ActionResult<object> GetSchemaOptions()
+    {
+        return Ok(new
+        {
+            type = AiResponseTypeCatalog.Types,
+            role = AiResponseTypeCatalog.Roles
+        });
     }
 }
