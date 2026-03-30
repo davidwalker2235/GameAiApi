@@ -91,7 +91,8 @@ public sealed class AzureFoundryChatService : IAiChatService
             {
                 new ChatRequestSystemMessage(BuildSystemInstruction()),
                 new ChatRequestSystemMessage($"Contexto del juego en Markdown:\n{_contextMarkdown}"),
-                new ChatRequestUserMessage($"SessionId: {request.SessionId}\nPrompt: {request.Prompt}")
+                new ChatRequestSystemMessage(BuildHistoryInstruction(request.RecentCards)),
+                new ChatRequestUserMessage(request.Prompt)
             };
 
             var raw = await CompleteTextAsync(messages, cancellationToken);
@@ -106,33 +107,37 @@ public sealed class AzureFoundryChatService : IAiChatService
     private static string BuildSystemInstruction()
     {
         return """
-               Eres un asistente narrativo para videojuegos.
-               Responde SIEMPRE y SOLO con JSON válido, sin markdown ni texto adicional.
-               Usa exactamente esta estructura:
-               {
-                 "type": "PEOPLE",
-                 "role": "Maintenance|Junior Employee|Senior Employee|Area Manager|Human Resources|CEO|Company Owner",
-                 "name": "string",
-                 "gender": "male|female|non-binary",
-                 "situation": "string",
-                 "left_option": "string",
-                 "right_option": "string",
-                 "effects": {
-                   "left": {
-                     "money": 0,
-                     "reputation": 0,
-                     "people": 0
-                   },
-                   "right": {
-                     "money": 0,
-                     "reputation": 0,
-                     "people": 0
-                   }
-                 }
-               }
-               No incluyas ninguna clave fuera de este esquema.
-               'type' debe ser siempre 'PEOPLE'.
+               You are a narrative assistant for a swipe-based decision videogame.
+               Always respond with valid JSON only, no markdown, no extra text.
+               The root JSON must contain exactly: type, role, name, gender, situation, left_option, right_option, effects, theme.
+               The "theme" field must be one of: technical, financial, HR, conflict, crisis, strategy, personal, absurd/unexpected.
                """;
+    }
+
+    private static string BuildHistoryInstruction(IReadOnlyList<Contracts.RecentCard> recentCards)
+    {
+        if (recentCards.Count == 0)
+        {
+            return "This is the first card of the session. Generate a completely new profile.";
+        }
+
+        var lines = recentCards.Select(c =>
+        {
+            if (string.Equals(c.Type, "EVENT", StringComparison.OrdinalIgnoreCase))
+            {
+                return $"- [EVENT] theme:{c.Theme ?? "unknown"}";
+            }
+
+            return $"- {c.Name ?? "?"} ({c.Role ?? "?"}) gender:{c.Gender ?? "?"} theme:{c.Theme ?? "unknown"}";
+        });
+
+        return $"""
+                ANTI-REPETITION: The following cards have already been shown in this session.
+                Use this list ONLY to enforce variety rules. Do NOT continue their narrative.
+                Do NOT reuse names, avoid repeating consecutive roles, balance genders, rotate themes.
+                Recent cards:
+                {string.Join("\n", lines)}
+                """;
     }
 
     private async Task<string> CompleteTextAsync(IReadOnlyList<ChatRequestMessage> messages, CancellationToken cancellationToken)

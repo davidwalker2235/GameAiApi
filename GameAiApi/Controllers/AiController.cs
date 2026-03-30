@@ -25,19 +25,20 @@ public sealed class AiController : ControllerBase
 
     [HttpPost("context")]
     [RequestSizeLimit(1024 * 1024)]
-    public async Task<ActionResult<ContextStatusResponse>> UploadContext([FromForm] IFormFile file, CancellationToken cancellationToken)
+    [Consumes("multipart/form-data")]
+    public async Task<ActionResult<ContextStatusResponse>> UploadContext([FromForm] UploadContextRequest request, CancellationToken cancellationToken)
     {
-        if (file.Length == 0)
+        if (request.File.Length == 0)
         {
             return BadRequest("El archivo está vacío.");
         }
 
-        if (!string.Equals(Path.GetExtension(file.FileName), ".md", StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(Path.GetExtension(request.File.FileName), ".md", StringComparison.OrdinalIgnoreCase))
         {
             return BadRequest("Solo se permite un archivo Markdown (.md).");
         }
 
-        await using var stream = file.OpenReadStream();
+        await using var stream = request.File.OpenReadStream();
         var response = await _aiChatService.UploadContextAsync(stream, cancellationToken);
         return Ok(response);
     }

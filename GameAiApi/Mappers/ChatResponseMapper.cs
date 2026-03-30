@@ -34,13 +34,31 @@ public static class ChatResponseMapper
             throw new InvalidOperationException($"Valor inválido para 'type'. Valores permitidos: {string.Join(", ", AiResponseTypeCatalog.Types)}.");
         }
 
-        if (!AiResponseTypeExtensions.TryParseRole(response.Role, out var parsedRole))
+        var isEvent = parsedType == AiResponseType.Event;
+
+        if (!isEvent && !AiResponseTypeExtensions.TryParseRole(response.Role, out var parsedRole))
         {
             throw new InvalidOperationException($"Valor inválido para 'role'. Valores permitidos: {string.Join(", ", AiResponseTypeCatalog.Roles)}.");
         }
+        else if (!isEvent)
+        {
+            AiResponseTypeExtensions.TryParseRole(response.Role, out var r);
+            response.Role = r.ToApiValue();
+        }
+        else
+        {
+            response.Role = string.Empty;
+            response.Name = string.Empty;
+            response.Gender = string.Empty;
+        }
 
         response.Type = parsedType.ToApiValue();
-        response.Role = parsedRole.ToApiValue();
+
+        if (AiResponseTypeExtensions.TryParseTheme(response.Theme, out var parsedTheme))
+        {
+            response.Theme = parsedTheme.ToApiValue();
+        }
+
         response.Effects ??= new EffectsResponse();
         response.Effects.Left ??= [];
         response.Effects.Right ??= [];

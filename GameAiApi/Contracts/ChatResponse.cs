@@ -27,6 +27,9 @@ public sealed class ChatResponse
 
     [JsonPropertyName("effects")]
     public EffectsResponse? Effects { get; set; }
+
+    [JsonPropertyName("theme")]
+    public string Theme { get; set; } = string.Empty;
 }
 
 public sealed class EffectsResponse
