@@ -1,96 +1,283 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="es">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Game AI API Tester</title>
+    <title>Game AI API” Context Manager</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 24px; max-width: 860px; }
-        h1 { margin-bottom: 8px; }
-        section { border: 1px solid #ddd; padding: 16px; border-radius: 8px; margin-bottom: 16px; }
-        textarea { width: 100%; min-height: 120px; }
-        pre { background: #111; color: #d6ffe3; padding: 12px; border-radius: 6px; overflow: auto; }
-        button { padding: 8px 14px; }
-        .row { margin: 10px 0; }
+        *, *::before, *::after { box-sizing: border-box; }
+        body { font-family: system-ui, sans-serif; margin: 0; background: #0f1117; color: #e2e8f0; min-height: 100vh; }
+        header { background: #1a1d2e; border-bottom: 1px solid #2d3148; padding: 16px 28px; display: flex; align-items: center; gap: 12px; }
+        header h1 { margin: 0; font-size: 1.2rem; color: #7c87f5; }
+        .badge { background: #2d3148; border-radius: 12px; padding: 2px 10px; font-size: 0.75rem; color: #a0aec0; }
+        main { display: grid; grid-template-columns: 380px 1fr; gap: 0; min-height: calc(100vh - 56px); }
+        aside { background: #13151f; border-right: 1px solid #2d3148; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+        section { background: #1a1d2e; border: 1px solid #2d3148; border-radius: 10px; padding: 16px; }
+        section h2 { margin: 0 0 14px; font-size: 0.9rem; color: #a0aec0; text-transform: uppercase; letter-spacing: 0.05em; }
+        .content { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+        input[type=text], input[type=file], textarea, select {
+            background: #0f1117; border: 1px solid #2d3148; border-radius: 6px;
+            color: #e2e8f0; padding: 8px 10px; font-size: 0.9rem; width: 100%;
+        }
+        input[type=text]:focus, textarea:focus { outline: none; border-color: #7c87f5; }
+        textarea { min-height: 160px; resize: vertical; font-family: monospace; font-size: 0.82rem; }
+        .row { display: flex; gap: 8px; align-items: flex-end; }
+        .row input[type=text] { flex: 1; }
+        button {
+            padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer;
+            font-size: 0.875rem; font-weight: 600; transition: opacity 0.15s;
+        }
+        button:hover { opacity: 0.85; }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+        .btn-primary { background: #7c87f5; color: #fff; }
+        .btn-danger { background: #e53e3e; color: #fff; padding: 6px 12px; font-size: 0.8rem; }
+        .btn-ghost { background: #2d3148; color: #e2e8f0; }
+        .context-list { display: flex; flex-direction: column; gap: 6px; max-height: 280px; overflow-y: auto; }
+        .context-item {
+            display: flex; align-items: center; justify-content: space-between;
+            background: #0f1117; border: 1px solid #2d3148; border-radius: 6px;
+            padding: 8px 12px; cursor: pointer; transition: border-color 0.15s;
+        }
+        .context-item:hover { border-color: #7c87f5; }
+        .context-item.active { border-color: #7c87f5; background: #1a1d2e; }
+        .context-item .meta { font-size: 0.75rem; color: #718096; margin-top: 2px; }
+        .context-item .name { font-weight: 600; font-size: 0.875rem; color: #e2e8f0; }
+        .chat-area { display: flex; flex-direction: column; gap: 12px; }
+        .chat-label { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #a0aec0; }
+        .selected-ctx { background: #2d3148; border-radius: 4px; padding: 2px 8px; color: #7c87f5; font-size: 0.8rem; }
+        pre { background: #0f1117; border: 1px solid #2d3148; border-radius: 8px; padding: 14px; overflow: auto; font-size: 0.8rem; color: #68d391; white-space: pre-wrap; min-height: 60px; }
+        .tag { display: inline-block; background: #2d3148; border-radius: 4px; padding: 1px 7px; font-size: 0.75rem; color: #a0aec0; margin: 2px; }
+        .tag.event { background: #2c3e50; color: #81d4fa; }
+        .tag.people { background: #1a2e1a; color: #68d391; }
+        .empty { color: #4a5568; font-style: italic; font-size: 0.85rem; text-align: center; padding: 20px 0; }
+        .toast { position: fixed; bottom: 20px; right: 20px; background: #2d3148; border: 1px solid #7c87f5; border-radius: 8px; padding: 10px 16px; font-size: 0.85rem; animation: fadeIn 0.2s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #4a5568; border-top-color: #7c87f5; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .recent-cards-list { display: flex; flex-wrap: wrap; gap: 4px; min-height: 24px; }
+        .clear-history { font-size: 0.75rem; color: #e53e3e; background: none; border: none; cursor: pointer; padding: 0; text-decoration: underline; }
     </style>
 </head>
 <body>
-    <h1>Game AI API Tester</h1>
-    <p>Sube contexto Markdown y prueba el chat contra Azure Foundry.</p>
+    <header>
+        <h1>Game AI API</h1>
+        <span class="badge">Context Manager</span>
+        <span class="badge" id="apiStatus">Comprobando...</span>
+    </header>
 
-    <section>
-        <h2>1) Subir contexto (.md)</h2>
-        <div class="row">
-            <input id="contextFile" type="file" accept=".md" />
-            <button id="uploadBtn">Subir contexto</button>
-        </div>
-        <div id="contextStatus">Estado: sin comprobar</div>
-    </section>
+    <main>
+        <aside>
+            <!-- Upload -->
+            <section>
+                <h2>Subir contexto</h2>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                    <input type="text" id="ctxName" placeholder='Nombre (ej: "es", "en", "tutorial")' />
+                    <input type="file" id="ctxFile" accept=".md" />
+                    <button class="btn-primary" id="uploadBtn">Subir</button>
+                </div>
+            </section>
 
-    <section>
-        <h2>2) Chat</h2>
-        <div class="row">
-            <label for="sessionId">SessionId</label>
-            <input id="sessionId" type="text" value="dev-session" style="width: 220px; margin-left: 8px;" />
-        </div>
-        <div class="row">
-            <textarea id="prompt" placeholder="Escribe el prompt para la IA"></textarea>
-        </div>
-        <button id="chatBtn">Enviar</button>
-    </section>
+            <!-- List -->
+            <section style="flex:1;">
+                <h2 style="display:flex;justify-content:space-between;align-items:center;">
+                    Contextos disponibles
+                    <button class="btn-ghost" style="padding:4px 10px;font-size:0.75rem;" id="refreshBtn">Actualizar</button>
+                </h2>
+                <div class="context-list" id="contextList">
+                    <div class="empty">Sin contextos cargados</div>
+                </div>
+            </section>
+        </aside>
 
-    <section>
-        <h2>Respuesta</h2>
-        <pre id="output">Sin respuesta todavía.</pre>
-    </section>
+        <div class="content">
+            <!-- Chat -->
+            <section>
+                <h2>Chat con la IA</h2>
+                <div class="chat-area">
+                    <div class="chat-label">
+                        Contexto activo: <span class="selected-ctx" id="selectedCtxLabel">ninguno</span>
+                        <span style="flex:1"></span>
+                        <span style="font-size:0.78rem;color:#718096;">recentCards:</span>
+                        <div class="recent-cards-list" id="recentCardsList"><span class="tag">vaciar</span></div>
+                        <button class="clear-history" id="clearHistoryBtn">limpiar</button>
+                    </div>
+                    <div class="row">
+                        <input type="text" id="promptInput" placeholder="Escribe el prompt (o deja &quot;next&quot;)" value="next" />
+                        <button class="btn-primary" id="chatBtn">Enviar</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Response -->
+            <section style="flex:1;">
+                <h2 style="display:flex;justify-content:space-between;align-items:center;">
+                    Respuesta
+                    <button class="btn-ghost" style="padding:4px 10px;font-size:0.75rem;" id="clearResponseBtn">Limpiar</button>
+                </h2>
+                <pre id="responseOutput">Sin respuesta todavÃ­a.</pre>
+            </section>
+        </div>
+    </main>
 
     <script>
         // @ts-nocheck
-        const contextStatus = document.getElementById('contextStatus');
-        const output = document.getElementById('output');
+        let selectedContext = null;
+        let recentCards = [];
 
-        async function refreshStatus() {
-            const res = await fetch('/api/ai/context/status');
-            const data = await res.json();
-            contextStatus.textContent = `Estado: ${data.hasContext ? 'contexto cargado' : 'sin contexto'} | versión: ${data.version ?? '-'}`;
+        const contextList    = document.getElementById('contextList');
+        const ctxName        = document.getElementById('ctxName');
+        const ctxFile        = document.getElementById('ctxFile');
+        const uploadBtn      = document.getElementById('uploadBtn');
+        const refreshBtn     = document.getElementById('refreshBtn');
+        const selectedLabel  = document.getElementById('selectedCtxLabel');
+        const promptInput    = document.getElementById('promptInput');
+        const chatBtn        = document.getElementById('chatBtn');
+        const responseOutput = document.getElementById('responseOutput');
+        const apiStatus      = document.getElementById('apiStatus');
+        const recentList     = document.getElementById('recentCardsList');
+        const clearHistBtn   = document.getElementById('clearHistoryBtn');
+        const clearRespBtn   = document.getElementById('clearResponseBtn');
+
+        function showToast(msg) {
+            const t = document.createElement('div');
+            t.className = 'toast';
+            t.textContent = msg;
+            document.body.appendChild(t);
+            setTimeout(() => t.remove(), 3000);
         }
 
-        document.getElementById('uploadBtn').addEventListener('click', async () => {
-            const fileInput = document.getElementById('contextFile');
-            const file = fileInput.files[0];
-            if (!file) {
-                alert('Selecciona un .md');
+        function setLoading(btn, loading) {
+            btn.disabled = loading;
+            btn.dataset.original = btn.dataset.original || btn.textContent;
+            btn.innerHTML = loading ? `<span class="spinner"></span>Cargando...` : btn.dataset.original;
+        }
+
+        function renderRecentCards() {
+            if (recentCards.length === 0) {
+                recentList.innerHTML = '<span class="tag">vacio</span>';
                 return;
             }
+            recentList.innerHTML = recentCards.map(c =>
+                c.type === 'EVENT'
+                    ? `<span class="tag event">[EVENT] ${c.theme || ''}</span>`
+                    : `<span class="tag people">${c.name || '?'} (${c.role || '?'})</span>`
+            ).join('');
+        }
 
-            const formData = new FormData();
-            formData.append('file', file);
+        async function loadContexts() {
+            const res = await fetch('/api/ai/contexts');
+            const data = await res.json();
+            if (!data || data.length === 0) {
+                contextList.innerHTML = '<div class="empty">Sin contextos cargados</div>';
+                apiStatus.textContent = 'API online';
+                return;
+            }
+            contextList.innerHTML = data.map(c => `
+                <div class="context-item ${selectedContext === c.name ? 'active' : ''}" data-name="${c.name}">
+                    <div>
+                        <div class="name">${c.name}</div>
+                        <div class="meta">${(c.sizeBytes / 1024).toFixed(1)} KB Â· ${new Date(c.uploadedAt).toLocaleString()}</div>
+                    </div>
+                    <button class="btn-danger" data-delete="${c.name}">Borrar</button>
+                </div>
+            `).join('');
+            apiStatus.textContent = 'API online';
 
-            const res = await fetch('/api/ai/context', {
-                method: 'POST',
-                body: formData
+            contextList.querySelectorAll('.context-item').forEach(el => {
+                el.addEventListener('click', (e) => {
+                    if (e.target.dataset.delete) return;
+                    selectedContext = el.dataset.name;
+                    selectedLabel.textContent = selectedContext;
+                    contextList.querySelectorAll('.context-item').forEach(i => i.classList.remove('active'));
+                    el.classList.add('active');
+                    showToast(`Contexto "${selectedContext}" seleccionado`);
+                });
             });
 
-            const text = await res.text();
-            output.textContent = text;
-            await refreshStatus();
+            contextList.querySelectorAll('[data-delete]').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    const name = btn.dataset.delete;
+                    if (!confirm(`Â¿Eliminar contexto "${name}"?`)) return;
+                    await fetch(`/api/ai/contexts/${name}`, { method: 'DELETE' });
+                    if (selectedContext === name) {
+                        selectedContext = null;
+                        selectedLabel.textContent = 'ninguno';
+                    }
+                    showToast(`Contexto "${name}" eliminado`);
+                    await loadContexts();
+                });
+            });
+        }
+
+        uploadBtn.addEventListener('click', async () => {
+            const name = ctxName.value.trim();
+            const file = ctxFile.files[0];
+            if (!name) { showToast('âš  Introduce un nombre'); return; }
+            if (!file) { showToast('âš  Selecciona un archivo .md'); return; }
+
+            setLoading(uploadBtn, true);
+            const form = new FormData();
+            form.append('name', name);
+            form.append('file', file);
+            const res = await fetch('/api/ai/contexts', { method: 'POST', body: form });
+            setLoading(uploadBtn, false);
+
+            if (res.ok) {
+                ctxName.value = '';
+                ctxFile.value = '';
+                showToast(`âœ“ Contexto "${name}" subido`);
+                await loadContexts();
+            } else {
+                const err = await res.text();
+                showToast(`âœ— Error: ${err}`);
+            }
         });
 
-        document.getElementById('chatBtn').addEventListener('click', async () => {
-            const sessionId = document.getElementById('sessionId').value;
-            const prompt = document.getElementById('prompt').value;
+        refreshBtn.addEventListener('click', loadContexts);
 
+        chatBtn.addEventListener('click', async () => {
+            if (!selectedContext) { showToast('âš  Selecciona un contexto primero'); return; }
+            const prompt = promptInput.value.trim() || 'next';
+            setLoading(chatBtn, true);
             const res = await fetch('/api/ai/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sessionId, prompt })
+                body: JSON.stringify({ prompt, contextName: selectedContext, recentCards })
             });
+            setLoading(chatBtn, false);
 
             const text = await res.text();
-            output.textContent = text;
+            responseOutput.textContent = (() => { try { return JSON.stringify(JSON.parse(text), null, 2); } catch { return text; } })();
+
+            if (res.ok) {
+                try {
+                    const card = JSON.parse(text);
+                    recentCards = [...recentCards, {
+                        name: card.name || null,
+                        role: card.role || null,
+                        type: card.type || 'PEOPLE',
+                        gender: card.gender || null,
+                        theme: card.theme || null
+                    }].slice(-10);
+                    renderRecentCards();
+                } catch {}
+            }
         });
 
-        refreshStatus();
+        clearHistBtn.addEventListener('click', () => {
+            recentCards = [];
+            renderRecentCards();
+            showToast('Historial limpiado');
+        });
+
+        clearRespBtn.addEventListener('click', () => {
+            responseOutput.textContent = 'Sin respuesta todavÃ­a.';
+        });
+
+        apiStatus.textContent = 'Conectando...';
+        loadContexts().catch(() => { apiStatus.textContent = '✗ API offline'; });
+        renderRecentCards();
     </script>
 </body>
 </html>

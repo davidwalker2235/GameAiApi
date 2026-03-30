@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text;
 using System.Text.Json;
 using Azure;
@@ -11,97 +12,101 @@ namespace GameAiApi.Services;
 
 public sealed class AzureFoundryChatService : IAiChatService
 {
-    private const string ContextFilePath = "App_Data/context.md";
+    private const string ContextsDirectory = "App_Data/contexts";
+    private static readonly char[] InvalidNameChars = Path.GetInvalidFileNameChars();
 
     private readonly AzureFoundryOptions _options;
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly SemaphoreSlim _stateLock = new(1, 1);
-
-    private string? _contextMarkdown;
-    private string? _contextVersion;
+    private readonly ConcurrentDictionary<string, string> _contextsCache = new(StringComparer.OrdinalIgnoreCase);
 
     public AzureFoundryChatService(IOptions<AzureFoundryOptions> options, IHttpClientFactory httpClientFactory)
     {
         _options = options.Value;
         _httpClientFactory = httpClientFactory;
-        LoadContextFromDisk();
+        Directory.CreateDirectory(ContextsDirectory);
+        LoadAllContextsFromDisk();
     }
 
-    public async Task<ContextStatusResponse> UploadContextAsync(Stream markdownStream, CancellationToken cancellationToken)
+    public async Task<ContextInfo> UploadContextAsync(string name, Stream markdownStream, CancellationToken cancellationToken)
     {
+        ValidateName(name);
+
         using var reader = new StreamReader(markdownStream, Encoding.UTF8, leaveOpen: true);
         var markdown = await reader.ReadToEndAsync(cancellationToken);
 
-        await _stateLock.WaitAsync(cancellationToken);
-        try
-        {
-            _contextMarkdown = markdown;
-            _contextVersion = DateTimeOffset.UtcNow.ToString("yyyyMMddHHmmss");
+        var filePath = GetFilePath(name);
+        await File.WriteAllTextAsync(filePath, markdown, cancellationToken);
+        _contextsCache[name] = markdown;
 
-            var directory = Path.GetDirectoryName(ContextFilePath);
-            if (!string.IsNullOrWhiteSpace(directory))
-            {
-                Directory.CreateDirectory(directory);
-            }
-
-            await File.WriteAllTextAsync(ContextFilePath, markdown, cancellationToken);
-
-            return new ContextStatusResponse
-            {
-                HasContext = !string.IsNullOrWhiteSpace(_contextMarkdown),
-                Version = _contextVersion
-            };
-        }
-        finally
-        {
-            _stateLock.Release();
-        }
+        return BuildContextInfo(name, filePath);
     }
 
-    public async Task<ContextStatusResponse> GetContextStatusAsync(CancellationToken cancellationToken)
+    public Task<IReadOnlyList<ContextInfo>> ListContextsAsync(CancellationToken cancellationToken)
     {
-        await _stateLock.WaitAsync(cancellationToken);
-        try
+        var result = Directory
+            .GetFiles(ContextsDirectory, "*.md")
+            .Select(path => BuildContextInfo(Path.GetFileNameWithoutExtension(path), path))
+            .OrderBy(c => c.Name)
+            .ToList();
+
+        return Task.FromResult<IReadOnlyList<ContextInfo>>(result);
+    }
+
+    public Task<ContextInfo> GetContextAsync(string name, CancellationToken cancellationToken)
+    {
+        var filePath = GetFilePath(name);
+        if (!File.Exists(filePath))
         {
-            return new ContextStatusResponse
-            {
-                HasContext = !string.IsNullOrWhiteSpace(_contextMarkdown),
-                Version = _contextVersion
-            };
+            throw new FileNotFoundException($"Contexto '{name}' no encontrado.");
         }
-        finally
+
+        return Task.FromResult(BuildContextInfo(name, filePath));
+    }
+
+    public Task DeleteContextAsync(string name, CancellationToken cancellationToken)
+    {
+        ValidateName(name);
+        var filePath = GetFilePath(name);
+        if (!File.Exists(filePath))
         {
-            _stateLock.Release();
+            throw new FileNotFoundException($"Contexto '{name}' no encontrado.");
         }
+
+        File.Delete(filePath);
+        _contextsCache.TryRemove(name, out _);
+        return Task.CompletedTask;
     }
 
     public async Task<ChatResponse> ChatAsync(ChatRequest request, CancellationToken cancellationToken)
     {
         ValidateOptions();
 
-        await _stateLock.WaitAsync(cancellationToken);
-        try
+        var contextName = request.ContextName;
+        if (string.IsNullOrWhiteSpace(contextName))
+            throw new InvalidOperationException("Debes especificar un contextName en la petición.");
+
+        if (!_contextsCache.TryGetValue(contextName, out var contextMarkdown))
         {
-            if (string.IsNullOrWhiteSpace(_contextMarkdown))
+            var filePath = GetFilePath(contextName);
+            if (!File.Exists(filePath))
             {
-                throw new InvalidOperationException("No hay contexto Markdown cargado. Sube un archivo .md primero.");
+                throw new InvalidOperationException($"Contexto '{contextName}' no encontrado. Sube un archivo .md con ese nombre primero.");
             }
 
-            var messages = new List<ChatRequestMessage>
-            {
-                new ChatRequestSystemMessage(BuildSystemInstruction()),
-                new ChatRequestSystemMessage($"Contexto del juego en Markdown:\n{_contextMarkdown}"),
-                new ChatRequestSystemMessage(BuildHistoryInstruction(request.RecentCards)),
-                new ChatRequestUserMessage(request.Prompt)
-            };
+            contextMarkdown = await File.ReadAllTextAsync(filePath, cancellationToken);
+            _contextsCache[contextName] = contextMarkdown;
+        }
 
-            var raw = await CompleteTextAsync(messages, cancellationToken);
-            return ChatResponseMapper.Map(raw);
-        }
-        finally
+        var messages = new List<ChatRequestMessage>
         {
-            _stateLock.Release();
-        }
+            new ChatRequestSystemMessage(BuildSystemInstruction()),
+            new ChatRequestSystemMessage($"Game context (Markdown):\n{contextMarkdown}"),
+            new ChatRequestSystemMessage(BuildHistoryInstruction(request.RecentCards)),
+            new ChatRequestUserMessage(request.Prompt)
+        };
+
+        var raw = await CompleteTextAsync(messages, cancellationToken);
+        return ChatResponseMapper.Map(raw);
     }
 
     private static string BuildSystemInstruction()
@@ -114,7 +119,7 @@ public sealed class AzureFoundryChatService : IAiChatService
                """;
     }
 
-    private static string BuildHistoryInstruction(IReadOnlyList<Contracts.RecentCard> recentCards)
+    private static string BuildHistoryInstruction(IReadOnlyList<RecentCard> recentCards)
     {
         if (recentCards.Count == 0)
         {
@@ -122,14 +127,9 @@ public sealed class AzureFoundryChatService : IAiChatService
         }
 
         var lines = recentCards.Select(c =>
-        {
-            if (string.Equals(c.Type, "EVENT", StringComparison.OrdinalIgnoreCase))
-            {
-                return $"- [EVENT] theme:{c.Theme ?? "unknown"}";
-            }
-
-            return $"- {c.Name ?? "?"} ({c.Role ?? "?"}) gender:{c.Gender ?? "?"} theme:{c.Theme ?? "unknown"}";
-        });
+            string.Equals(c.Type, "EVENT", StringComparison.OrdinalIgnoreCase)
+                ? $"- [EVENT] theme:{c.Theme ?? "unknown"}"
+                : $"- {c.Name ?? "?"} ({c.Role ?? "?"}) gender:{c.Gender ?? "?"} theme:{c.Theme ?? "unknown"}");
 
         return $"""
                 ANTI-REPETITION: The following cards have already been shown in this session.
@@ -168,12 +168,7 @@ public sealed class AzureFoundryChatService : IAiChatService
         using var request = new HttpRequestMessage(HttpMethod.Post, url);
         request.Headers.TryAddWithoutValidation("api-key", _options.ApiKey);
 
-        var payload = new
-        {
-            model = _options.Model,
-            input = messages.Select(ToResponsesInput)
-        };
-
+        var payload = new { model = _options.Model, input = messages.Select(ToResponsesInput) };
         request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
 
         using var response = await client.SendAsync(request, cancellationToken);
@@ -204,11 +199,7 @@ public sealed class AzureFoundryChatService : IAiChatService
             _ => string.Empty
         };
 
-        return new
-        {
-            role,
-            content = text
-        };
+        return new { role, content = text };
     }
 
     private static string ExtractResponseText(string json)
@@ -225,10 +216,7 @@ public sealed class AzureFoundryChatService : IAiChatService
         {
             foreach (var item in output.EnumerateArray())
             {
-                if (!item.TryGetProperty("content", out var content) || content.ValueKind != JsonValueKind.Array)
-                {
-                    continue;
-                }
+                if (!item.TryGetProperty("content", out var content) || content.ValueKind != JsonValueKind.Array) continue;
 
                 foreach (var block in content.EnumerateArray())
                 {
@@ -244,53 +232,55 @@ public sealed class AzureFoundryChatService : IAiChatService
     }
 
     private static bool IsResponsesEndpoint(string endpoint)
-    {
-        return endpoint.Contains("/openai/responses", StringComparison.OrdinalIgnoreCase);
-    }
+        => endpoint.Contains("/openai/responses", StringComparison.OrdinalIgnoreCase);
 
     private static string NormalizeEndpoint(string endpoint)
     {
         var uri = new Uri(endpoint);
-        var builder = new UriBuilder(uri)
-        {
-            Path = uri.AbsolutePath.TrimEnd('/'),
-            Query = string.Empty
-        };
-
+        var builder = new UriBuilder(uri) { Path = uri.AbsolutePath.TrimEnd('/'), Query = string.Empty };
         return builder.Uri.ToString().TrimEnd('/');
+    }
+
+    private static string GetFilePath(string name) => Path.Combine(ContextsDirectory, $"{name}.md");
+
+    private static ContextInfo BuildContextInfo(string name, string filePath)
+    {
+        var info = new FileInfo(filePath);
+        return new ContextInfo
+        {
+            Name = name,
+            Version = info.LastWriteTimeUtc.ToString("yyyyMMddHHmmss"),
+            UploadedAt = new DateTimeOffset(info.LastWriteTimeUtc, TimeSpan.Zero),
+            SizeBytes = info.Length
+        };
+    }
+
+    private static void ValidateName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name) || name.IndexOfAny(InvalidNameChars) >= 0)
+        {
+            throw new ArgumentException($"Nombre de contexto inválido: '{name}'.");
+        }
     }
 
     private void ValidateOptions()
     {
         if (string.IsNullOrWhiteSpace(_options.Endpoint))
-        {
             throw new InvalidOperationException("Falta AzureFoundry:Endpoint.");
-        }
-
         if (string.IsNullOrWhiteSpace(_options.Model))
-        {
             throw new InvalidOperationException("Falta AzureFoundry:Model.");
-        }
-
         if (string.IsNullOrWhiteSpace(_options.ApiKey))
-        {
             throw new InvalidOperationException("Falta AzureFoundry:ApiKey.");
-        }
-
         if (!Uri.TryCreate(_options.Endpoint, UriKind.Absolute, out _))
-        {
             throw new InvalidOperationException("AzureFoundry:Endpoint no es una URL válida.");
-        }
     }
 
-    private void LoadContextFromDisk()
+    private void LoadAllContextsFromDisk()
     {
-        if (!File.Exists(ContextFilePath))
+        foreach (var file in Directory.GetFiles(ContextsDirectory, "*.md"))
         {
-            return;
+            var name = Path.GetFileNameWithoutExtension(file);
+            _contextsCache[name] = File.ReadAllText(file);
         }
-
-        _contextMarkdown = File.ReadAllText(ContextFilePath);
-        _contextVersion = File.GetLastWriteTimeUtc(ContextFilePath).ToString("yyyyMMddHHmmss");
     }
 }

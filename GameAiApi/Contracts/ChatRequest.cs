@@ -7,6 +7,9 @@ public sealed class ChatRequest
     [Required]
     public string Prompt { get; init; } = string.Empty;
 
+    [Required]
+    public string ContextName { get; init; } = string.Empty;
+
     public IReadOnlyList<RecentCard> RecentCards { get; init; } = [];
 }
 
