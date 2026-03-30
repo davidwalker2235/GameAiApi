@@ -28,5 +28,6 @@ app.UseStaticFiles();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapGet("/backoffice-users", () => Results.Redirect("/backoffice-users.html", permanent: true));
 
 app.Run();

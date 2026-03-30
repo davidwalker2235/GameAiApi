@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Game AI API – Backoffice · Users</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        body { font-family: system-ui, sans-serif; margin: 0; background: #0f1117; color: #e2e8f0; min-height: 100vh; }
+
+        /* Header */
+        header { background: #1a1d2e; border-bottom: 1px solid #2d3148; padding: 16px 28px; display: flex; align-items: center; gap: 12px; }
+        header h1 { margin: 0; font-size: 1.2rem; color: #7c87f5; }
+        .badge { background: #2d3148; border-radius: 12px; padding: 2px 10px; font-size: 0.75rem; color: #a0aec0; }
+        nav { margin-left: auto; display: flex; gap: 4px; }
+        nav a { text-decoration: none; padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; color: #a0aec0; transition: all 0.15s; }
+        nav a:hover { background: #2d3148; color: #e2e8f0; }
+        nav a.active { background: #7c87f5; color: #fff; }
+
+        /* Layout */
+        main { padding: 24px 28px; display: flex; flex-direction: column; gap: 16px; }
+        .card { background: #1a1d2e; border: 1px solid #2d3148; border-radius: 10px; padding: 16px; }
+        .card-title { margin: 0 0 14px; font-size: 0.9rem; color: #a0aec0; text-transform: uppercase; letter-spacing: 0.05em; }
+
+        /* Search */
+        .search-bar { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+        .search-field { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 180px; }
+        .search-field label { font-size: 0.75rem; color: #718096; }
+        .search-actions { display: flex; gap: 8px; align-items: flex-end; }
+
+        /* Inputs */
+        input[type=text], input[type=number], input[type=email] {
+            background: #0f1117; border: 1px solid #2d3148; border-radius: 6px;
+            color: #e2e8f0; padding: 8px 10px; font-size: 0.9rem; width: 100%;
+        }
+        input:focus { outline: none; border-color: #7c87f5; }
+        input::placeholder { color: #4a5568; }
+
+        /* Buttons */
+        button { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 600; transition: opacity 0.15s; white-space: nowrap; }
+        button:hover { opacity: 0.85; }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+        .btn-primary { background: #7c87f5; color: #fff; }
+        .btn-danger  { background: #e53e3e; color: #fff; padding: 5px 11px; font-size: 0.8rem; }
+        .btn-ghost   { background: #2d3148; color: #e2e8f0; }
+        .btn-edit    { background: #276749; color: #9ae6b4; padding: 5px 11px; font-size: 0.8rem; }
+
+        /* Table */
+        .table-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+        .table-header h2 { margin: 0; font-size: 0.9rem; color: #a0aec0; text-transform: uppercase; letter-spacing: 0.05em; }
+        .count-badge { background: #2d3148; border-radius: 12px; padding: 1px 9px; font-size: 0.75rem; color: #7c87f5; font-weight: 600; margin-left: 8px; }
+        .table-wrapper { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+        thead th { text-align: left; padding: 10px 12px; font-size: 0.75rem; color: #718096; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #2d3148; }
+        tbody tr { border-bottom: 1px solid #1e2030; transition: background 0.1s; }
+        tbody tr:last-child { border-bottom: none; }
+        tbody tr:hover { background: #1e2236; }
+        tbody td { padding: 10px 12px; vertical-align: middle; }
+        .id-cell { font-family: monospace; font-size: 0.75rem; color: #718096; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: help; }
+        .points-badge { background: #2d3148; border-radius: 12px; padding: 2px 10px; font-size: 0.8rem; color: #7c87f5; font-weight: 600; display: inline-block; }
+        .btn-actions { display: flex; gap: 6px; }
+        .empty-row td { text-align: center; color: #4a5568; font-style: italic; padding: 48px; }
+
+        /* Modal overlay */
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 100; align-items: center; justify-content: center; }
+        .modal-overlay.open { display: flex; }
+        .modal { background: #1a1d2e; border: 1px solid #2d3148; border-radius: 12px; padding: 24px; width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 16px; }
+        .modal h2 { margin: 0; font-size: 1rem; color: #e2e8f0; }
+        .modal-field { display: flex; flex-direction: column; gap: 5px; }
+        .modal-field label { font-size: 0.78rem; color: #a0aec0; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+        .confirm-modal { max-width: 360px; }
+        .confirm-modal p { margin: 0; font-size: 0.9rem; color: #a0aec0; line-height: 1.5; }
+
+        /* Toast */
+        .toast { position: fixed; bottom: 20px; right: 20px; background: #2d3148; border: 1px solid #7c87f5; border-radius: 8px; padding: 10px 18px; font-size: 0.85rem; z-index: 200; animation: fadeIn 0.2s; }
+        .toast.error { border-color: #e53e3e; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Spinner */
+        .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #4a5568; border-top-color: #7c87f5; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Game AI API</h1>
+        <span class="badge">Backoffice</span>
+        <nav>
+            <a href="/">Context Manager</a>
+            <a href="/backoffice-users.html" class="active">Users</a>
+        </nav>
+    </header>
+
+    <main>
+        <!-- Search -->
+        <div class="card">
+            <h2 class="card-title">Buscar usuarios</h2>
+            <div class="search-bar">
+                <div class="search-field">
+                    <label for="searchId">ID</label>
+                    <input type="text" id="searchId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+                </div>
+                <div class="search-field">
+                    <label for="searchName">Nombre</label>
+                    <input type="text" id="searchName" placeholder="Ej: Mario" />
+                </div>
+                <div class="search-field">
+                    <label for="searchEmail">Email</label>
+                    <input type="text" id="searchEmail" placeholder="Ej: mario@ejemplo.com" />
+                </div>
+                <div class="search-actions">
+                    <button class="btn-primary" id="searchBtn">Buscar</button>
+                    <button class="btn-ghost" id="clearSearchBtn">Limpiar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="card">
+            <div class="table-header">
+                <h2>
+                    Usuarios
+                    <span class="count-badge" id="userCount">0</span>
+                </h2>
+                <button class="btn-primary" id="newUserBtn">+ Nuevo usuario</button>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nombre</th>
+                            <th>Email</th>
+                            <th>Puntos</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersBody">
+                        <tr class="empty-row"><td colspan="5">Cargando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Create / Edit Modal -->
+    <div class="modal-overlay" id="formModal">
+        <div class="modal">
+            <h2 id="formModalTitle">Nuevo usuario</h2>
+            <div class="modal-field">
+                <label for="formName">Nombre *</label>
+                <input type="text" id="formName" placeholder="Nombre del usuario" />
+            </div>
+            <div class="modal-field">
+                <label for="formEmail">Email *</label>
+                <input type="email" id="formEmail" placeholder="email@ejemplo.com" />
+            </div>
+            <div class="modal-field">
+                <label for="formPoints">Puntos</label>
+                <input type="number" id="formPoints" placeholder="0" value="0" min="0" />
+            </div>
+            <div class="modal-actions">
+                <button class="btn-ghost" id="formCancelBtn">Cancelar</button>
+                <button class="btn-primary" id="formSaveBtn">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Delete Modal -->
+    <div class="modal-overlay" id="confirmModal">
+        <div class="modal confirm-modal">
+            <h2>Eliminar usuario</h2>
+            <p id="confirmText">¿Estás seguro de que quieres eliminar este usuario? Esta acción no se puede deshacer.</p>
+            <div class="modal-actions">
+                <button class="btn-ghost" id="confirmCancelBtn">Cancelar</button>
+                <button class="btn-danger" id="confirmDeleteBtn">Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // @ts-nocheck
+        let editingId  = null;
+        let deletingId = null;
+        let lastSearch = {};
+
+        const usersBody      = document.getElementById('usersBody');
+        const userCount      = document.getElementById('userCount');
+        const searchId       = document.getElementById('searchId');
+        const searchName     = document.getElementById('searchName');
+        const searchEmail    = document.getElementById('searchEmail');
+        const searchBtn      = document.getElementById('searchBtn');
+        const clearSearchBtn = document.getElementById('clearSearchBtn');
+        const newUserBtn     = document.getElementById('newUserBtn');
+
+        const formModal      = document.getElementById('formModal');
+        const formModalTitle = document.getElementById('formModalTitle');
+        const formName       = document.getElementById('formName');
+        const formEmail      = document.getElementById('formEmail');
+        const formPoints     = document.getElementById('formPoints');
+        const formCancelBtn  = document.getElementById('formCancelBtn');
+        const formSaveBtn    = document.getElementById('formSaveBtn');
+
+        const confirmModal     = document.getElementById('confirmModal');
+        const confirmText      = document.getElementById('confirmText');
+        const confirmCancelBtn = document.getElementById('confirmCancelBtn');
+        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+
+        function showToast(msg, isError = false) {
+            const t = document.createElement('div');
+            t.className = 'toast' + (isError ? ' error' : '');
+            t.textContent = msg;
+            document.body.appendChild(t);
+            setTimeout(() => t.remove(), 3000);
+        }
+
+        function setLoading(btn, loading, label = 'Guardando...') {
+            btn.disabled = loading;
+            if (!btn.dataset.orig) btn.dataset.orig = btn.textContent;
+            btn.innerHTML = loading ? `<span class="spinner"></span>${label}` : btn.dataset.orig;
+        }
+
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        function openFormModal(user = null) {
+            editingId            = user ? user.id : null;
+            formModalTitle.textContent = user ? 'Editar usuario' : 'Nuevo usuario';
+            formName.value       = user ? user.name   : '';
+            formEmail.value      = user ? user.email  : '';
+            formPoints.value     = user ? user.points : '0';
+            formModal.classList.add('open');
+            formName.focus();
+        }
+
+        function closeFormModal() {
+            formModal.classList.remove('open');
+            editingId = null;
+        }
+
+        function openConfirmModal(user) {
+            deletingId = user.id;
+            confirmText.textContent = `¿Estás seguro de que quieres eliminar a "${user.name}" (${user.email})? Esta acción no se puede deshacer.`;
+            confirmModal.classList.add('open');
+        }
+
+        function closeConfirmModal() {
+            confirmModal.classList.remove('open');
+            deletingId = null;
+        }
+
+        function renderUsers(users) {
+            userCount.textContent = users.length;
+            if (users.length === 0) {
+                usersBody.innerHTML = '<tr class="empty-row"><td colspan="5">No se encontraron usuarios</td></tr>';
+                return;
+            }
+            usersBody.innerHTML = users.map(u => `
+                <tr>
+                    <td class="id-cell" title="${u.id}">${u.id}</td>
+                    <td>${escapeHtml(u.name)}</td>
+                    <td>${escapeHtml(u.email)}</td>
+                    <td><span class="points-badge">${u.points}</span></td>
+                    <td>
+                        <div class="btn-actions">
+                            <button class="btn-edit"   data-edit="${u.id}">Editar</button>
+                            <button class="btn-danger" data-delete="${u.id}">Eliminar</button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+
+            usersBody.querySelectorAll('[data-edit]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const user = users.find(u => u.id === btn.dataset.edit);
+                    if (user) openFormModal(user);
+                });
+            });
+
+            usersBody.querySelectorAll('[data-delete]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const user = users.find(u => u.id === btn.dataset.delete);
+                    if (user) openConfirmModal(user);
+                });
+            });
+        }
+
+        async function loadUsers(params = {}) {
+            lastSearch = params;
+            usersBody.innerHTML = '<tr class="empty-row"><td colspan="5"><span class="spinner"></span> Cargando...</td></tr>';
+            try {
+                const query = new URLSearchParams();
+                if (params.id)    query.set('id',    params.id);
+                if (params.name)  query.set('name',  params.name);
+                if (params.email) query.set('email', params.email);
+
+                const hasFilters = [...query.keys()].length > 0;
+                const url = hasFilters ? `/api/users/search?${query}` : '/api/users';
+                const res = await fetch(url);
+                if (!res.ok) throw new Error(res.statusText);
+                renderUsers(await res.json());
+            } catch {
+                showToast('Error al cargar usuarios', true);
+                renderUsers([]);
+            }
+        }
+
+        function refreshCurrent() {
+            loadUsers(lastSearch);
+        }
+
+        // Search
+        searchBtn.addEventListener('click', () => loadUsers({
+            id:    searchId.value.trim(),
+            name:  searchName.value.trim(),
+            email: searchEmail.value.trim()
+        }));
+
+        [searchId, searchName, searchEmail].forEach(input =>
+            input.addEventListener('keydown', e => { if (e.key === 'Enter') searchBtn.click(); })
+        );
+
+        clearSearchBtn.addEventListener('click', () => {
+            searchId.value = searchName.value = searchEmail.value = '';
+            loadUsers();
+        });
+
+        // New user
+        newUserBtn.addEventListener('click', () => openFormModal());
+
+        // Form modal
+        formCancelBtn.addEventListener('click', closeFormModal);
+        formModal.addEventListener('click', e => { if (e.target === formModal) closeFormModal(); });
+
+        formSaveBtn.addEventListener('click', async () => {
+            const name   = formName.value.trim();
+            const email  = formEmail.value.trim();
+            const points = parseInt(formPoints.value, 10) || 0;
+
+            if (!name)  { showToast('⚠ El nombre es obligatorio', true); return; }
+            if (!email) { showToast('⚠ El email es obligatorio', true); return; }
+
+            setLoading(formSaveBtn, true);
+            try {
+                const isEdit = editingId !== null;
+                const res = await fetch(isEdit ? `/api/users/${editingId}` : '/api/users', {
+                    method:  isEdit ? 'PUT' : 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ name, email, points })
+                });
+                if (res.ok) {
+                    showToast(isEdit ? '✔ Usuario actualizado' : '✔ Usuario creado');
+                    closeFormModal();
+                    refreshCurrent();
+                } else {
+                    showToast(`✗ Error: ${await res.text()}`, true);
+                }
+            } finally {
+                setLoading(formSaveBtn, false);
+            }
+        });
+
+        // Confirm delete
+        confirmCancelBtn.addEventListener('click', closeConfirmModal);
+        confirmModal.addEventListener('click', e => { if (e.target === confirmModal) closeConfirmModal(); });
+
+        confirmDeleteBtn.addEventListener('click', async () => {
+            if (!deletingId) return;
+            setLoading(confirmDeleteBtn, true, 'Eliminando...');
+            try {
+                const res = await fetch(`/api/users/${deletingId}`, { method: 'DELETE' });
+                if (res.ok) {
+                    showToast('✔ Usuario eliminado');
+                    closeConfirmModal();
+                    refreshCurrent();
+                } else {
+                    showToast('✗ Error al eliminar', true);
+                }
+            } finally {
+                setLoading(confirmDeleteBtn, false);
+            }
+        });
+
+        // Initial load
+        loadUsers();
+    </script>
+</body>
+</html>

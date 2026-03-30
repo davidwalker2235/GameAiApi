@@ -24,6 +24,28 @@ public sealed class UsersController : ControllerBase
         return Ok(users);
     }
 
+    [HttpGet("search")]
+    public async Task<ActionResult<IReadOnlyList<User>>> Search(
+        [FromQuery] string? id,
+        [FromQuery] string? name,
+        [FromQuery] string? email,
+        CancellationToken cancellationToken)
+    {
+        var query = _context.Users.AsQueryable();
+
+        if (Guid.TryParse(id, out var guidId))
+            query = query.Where(u => u.Id == guidId);
+
+        if (!string.IsNullOrWhiteSpace(name))
+            query = query.Where(u => u.Name.Contains(name));
+
+        if (!string.IsNullOrWhiteSpace(email))
+            query = query.Where(u => u.Email.Contains(email));
+
+        var users = await query.ToListAsync(cancellationToken);
+        return Ok(users);
+    }
+
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<User>> GetById(Guid id, CancellationToken cancellationToken)
     {
