@@ -9,6 +9,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Utils\AIScenarioGenerator.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Utils\AIScenarioGenerator.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Azure.AI.Inference" Version="1.0.0-beta.5" />
     <PackageReference Include="Azure.Identity" Version="1.19.0" />
     <PackageReference Include="Markdig" Version="0.40.0" />

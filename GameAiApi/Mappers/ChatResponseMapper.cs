@@ -1,6 +1,7 @@
 using System.Text.Json;
 using GameAiApi.Contracts;
 using GameAiApi.Domain;
+using GameAiApi.Utils;
 
 namespace GameAiApi.Mappers;
 
@@ -64,8 +65,27 @@ public static class ChatResponseMapper
         response.Effects.Right ??= [];
         EnsureDefaultEffectValues(response.Effects.Left);
         EnsureDefaultEffectValues(response.Effects.Right);
+        EncryptEffects(response);
 
         return response;
+    }
+
+    private static void EncryptEffects(ChatResponse response)
+    {
+        var plainEffects = new PlainEffectsPayload
+        {
+            Left = response.Effects?.Left ?? [],
+            Right = response.Effects?.Right ?? []
+        };
+
+        var encryptedEffects = EffectsEncryption.Encrypt(plainEffects, response.Situation);
+
+        response.Effects = new EffectsResponse
+        {
+            Ciphertext = encryptedEffects.Ciphertext,
+            Iv = encryptedEffects.Iv,
+            Salt = encryptedEffects.Salt
+        };
     }
 
     private static void EnsureDefaultEffectValues(Dictionary<string, int> values)
