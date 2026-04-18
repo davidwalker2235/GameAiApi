@@ -5,7 +5,9 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+// Temporalmente desactivado porque CORS se está gestionando desde Azure App Service.
+// Para volver al comportamiento anterior, descomentar este bloque y el registro de CORS.
+// var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 
 builder.Services.Configure<AzureFoundryOptions>(builder.Configuration.GetSection(AzureFoundryOptions.SectionName));
 builder.Services.AddHttpClient();
@@ -14,24 +16,25 @@ builder.Services.AddSingleton<IAiChatService, AzureFoundryChatService>();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DatabaseConnection")));
 
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("FrontendCors", policy =>
-    {
-        if (allowedOrigins.Length == 0)
-        {
-            policy.AllowAnyOrigin()
-                .AllowAnyHeader()
-                .AllowAnyMethod();
-
-            return;
-        }
-
-        policy.WithOrigins(allowedOrigins)
-            .AllowAnyHeader()
-            .AllowAnyMethod();
-    });
-});
+// Temporalmente desactivado porque CORS se está gestionando desde Azure App Service.
+// builder.Services.AddCors(options =>
+// {
+//     options.AddPolicy("FrontendCors", policy =>
+//     {
+//         if (allowedOrigins.Length == 0)
+//         {
+//             policy.AllowAnyOrigin()
+//                 .AllowAnyHeader()
+//                 .AllowAnyMethod();
+//
+//             return;
+//         }
+//
+//         policy.WithOrigins(allowedOrigins)
+//             .AllowAnyHeader()
+//             .AllowAnyMethod();
+//     });
+// });
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -43,7 +46,8 @@ app.UseSwagger();
 app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
-app.UseCors("FrontendCors");
+// Temporalmente desactivado porque CORS se está gestionando desde Azure App Service.
+// app.UseCors("FrontendCors");
 app.UseDefaultFiles();
 app.UseStaticFiles();
 

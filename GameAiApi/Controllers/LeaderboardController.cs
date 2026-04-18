@@ -22,6 +22,7 @@ public sealed class LeaderboardController : ControllerBase
         var leaderboard = await _context.Leaderboard
             .AsNoTracking()
             .OrderByDescending(entry => entry.Points)
+            .Take(10)
             .ToListAsync(cancellationToken);
 
         return Ok(leaderboard);

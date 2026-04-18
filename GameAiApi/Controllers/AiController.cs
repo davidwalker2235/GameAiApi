@@ -37,6 +37,20 @@ public sealed class AiController : ControllerBase
         }
     }
 
+    [HttpGet("contexts/{name}/download")]
+    public async Task<IActionResult> DownloadContext(string name, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var content = await _aiChatService.GetContextContentAsync(name, cancellationToken);
+            return File(System.Text.Encoding.UTF8.GetBytes(content), "text/markdown", $"{name}.md");
+        }
+        catch (FileNotFoundException)
+        {
+            return NotFound($"Contexto '{name}' no encontrado.");
+        }
+    }
+
     [HttpPost("contexts")]
     [RequestSizeLimit(1024 * 1024)]
     [Consumes("multipart/form-data")]

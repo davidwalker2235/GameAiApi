@@ -10,6 +10,8 @@ public interface IAiChatService
 
     Task<ContextInfo> GetContextAsync(string name, CancellationToken cancellationToken);
 
+    Task<string> GetContextContentAsync(string name, CancellationToken cancellationToken);
+
     Task DeleteContextAsync(string name, CancellationToken cancellationToken);
 
     Task<ChatResponse> ChatAsync(ChatRequest request, CancellationToken cancellationToken);

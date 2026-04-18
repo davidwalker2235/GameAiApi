@@ -63,6 +63,19 @@ public sealed class AzureFoundryChatService : IAiChatService
         return Task.FromResult(BuildContextInfo(name, filePath));
     }
 
+    public async Task<string> GetContextContentAsync(string name, CancellationToken cancellationToken)
+    {
+        ValidateName(name);
+
+        var filePath = GetFilePath(name);
+        if (!File.Exists(filePath))
+        {
+            throw new FileNotFoundException($"Contexto '{name}' no encontrado.");
+        }
+
+        return await File.ReadAllTextAsync(filePath, cancellationToken);
+    }
+
     public Task DeleteContextAsync(string name, CancellationToken cancellationToken)
     {
         ValidateName(name);
