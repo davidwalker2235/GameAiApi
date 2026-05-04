@@ -35,22 +35,8 @@ public sealed class ChatResponse
 public sealed class EffectsResponse
 {
     [JsonPropertyName("left")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public Dictionary<string, int>? Left { get; set; }
 
     [JsonPropertyName("right")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public Dictionary<string, int>? Right { get; set; }
-
-    [JsonPropertyName("ciphertext")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? Ciphertext { get; set; }
-
-    [JsonPropertyName("iv")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? Iv { get; set; }
-
-    [JsonPropertyName("salt")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? Salt { get; set; }
 }

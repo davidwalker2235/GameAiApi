@@ -239,14 +239,7 @@ public class AIScenarioGenerator : MonoBehaviour
             return errors;
         }
 
-        bool hasEncryptedPayload =
-            !string.IsNullOrEmpty(data.effects.ciphertext) &&
-            !string.IsNullOrEmpty(data.effects.iv) &&
-            !string.IsNullOrEmpty(data.effects.salt);
-
-        Debug.Log($"Effects payload recibido. encrypted={hasEncryptedPayload}, left={(data.effects.left != null)}, right={(data.effects.right != null)}, ciphertextLength={(data.effects.ciphertext?.Length ?? 0)}, ivLength={(data.effects.iv?.Length ?? 0)}, saltLength={(data.effects.salt?.Length ?? 0)}");
-
-        if (!hasEncryptedPayload && (data.effects.left != null || data.effects.right != null))
+        if (data.effects.left != null || data.effects.right != null)
         {
             errors.Add("No se permite effects en claro. Debe venir effects encriptado");
             return errors;
@@ -258,7 +251,9 @@ public class AIScenarioGenerator : MonoBehaviour
             return errors;
         }
 
-        if (!hasEncryptedPayload)
+        if (string.IsNullOrEmpty(data.effects.ciphertext) ||
+            string.IsNullOrEmpty(data.effects.iv) ||
+            string.IsNullOrEmpty(data.effects.salt))
         {
             errors.Add("effects incompleto (ciphertext/iv/salt)");
             return errors;
@@ -269,18 +264,6 @@ public class AIScenarioGenerator : MonoBehaviour
             byte[] cipherBytes = Convert.FromBase64String(data.effects.ciphertext);
             byte[] ivBytes = Convert.FromBase64String(data.effects.iv);
             byte[] saltBytes = Convert.FromBase64String(data.effects.salt);
-
-            if (ivBytes.Length != 16)
-            {
-                errors.Add($"IV inválido. Longitud esperada: 16 bytes. Actual: {ivBytes.Length}");
-                return errors;
-            }
-
-            if (saltBytes.Length == 0)
-            {
-                errors.Add("Salt inválido. No puede estar vacío");
-                return errors;
-            }
 
             string keyMaterial = $"{data.situation}|{SHARED_SECRET}";
             using var kdf = new Rfc2898DeriveBytes(keyMaterial, saltBytes, PBKDF2_ITERATIONS, HashAlgorithmName.SHA256);
@@ -296,8 +279,6 @@ public class AIScenarioGenerator : MonoBehaviour
             byte[] plainBytes = decryptor.TransformFinalBlock(cipherBytes, 0, cipherBytes.Length);
             string effectsJson = Encoding.UTF8.GetString(plainBytes);
 
-            Debug.Log($"Effects desencriptados: {effectsJson}");
-
             ScenarioEffects decryptedEffects = JsonUtility.FromJson<ScenarioEffects>(effectsJson);
             if (decryptedEffects == null)
             {
@@ -305,17 +286,10 @@ public class AIScenarioGenerator : MonoBehaviour
                 return errors;
             }
 
-            if (decryptedEffects.left == null || decryptedEffects.right == null)
-            {
-                errors.Add("Los effects desencriptados no contienen left/right válidos");
-                return errors;
-            }
-
             data.effects = decryptedEffects;
         }
         catch (Exception ex)
         {
-            Debug.LogError($"Error desencriptando effects. Exception={ex.GetType().Name}, Message={ex.Message}");
             errors.Add($"Error desencriptando effects: {ex.Message}");
         }
 
